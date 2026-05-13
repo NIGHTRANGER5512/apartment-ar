@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Hari Enclave — AR Viewer</title>
+
+  <!-- A-Frame v1.5.0 — bundles Three.js r158, OBJLoader, and WebXR support -->
+  <script src="https://cdn.jsdelivr.net/npm/aframe@1.5.0/dist/aframe.min.js"></script>
+
+  <style>
+    /* ── CSS custom properties ─────────────────────────────── */
+    :root {
+      --color-navy:       #1a3c5e;
+      --color-gold:       #c9a84c;
+      --color-white:      #ffffff;
+      --color-light-grey: #f5f5f5;
+      --color-overlay:    rgba(0, 0, 0, 0.65);
+      --radius:           10px;
+      --font:             'Segoe UI', Arial, sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      overflow: hidden;
+      background: #000;
+    }
+
+    a-scene {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+    }
+
+    /* ── Pre-AR / Loading overlay ──────────────────────────── */
+    #loading-overlay {
+      position: fixed;
+      inset: 0;
+      background: var(--color-navy);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      padding: 28px 24px;
+      text-align: center;
+      transition: opacity 0.8s ease;
+    }
+
+    #loading-overlay.fade-out {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .logo { font-size: 2rem; font-weight: 700; color: var(--color-gold); letter-spacing: 2px; }
+    .tagline { color: rgba(255,255,255,0.65); font-size: 0.85rem; margin: 6px 0 28px; }
+
+    /* ── Start AR button ───────────────────────────────────── */
+    #start-ar-btn {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+
+    #start-ar-btn button {
+      padding: 14px 40px;
+      background: var(--color-gold);
+      color: var(--color-navy);
+      border: none;
+      border-radius: 30px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      font-family: var(--font);
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(201,168,76,0.5);
+      transition: opacity 0.2s, transform 0.15s;
+    }
+
+    #start-ar-btn button:active { opacity: 0.85; transform: scale(0.97); }
+
+    #start-ar-btn .sub-text {
+      color: rgba(255,255,255,0.5);
+      font-size: 0.75rem;
+      max-width: 260px;
+      line-height: 1.5;
+    }
+
+    /* ── Model loading progress (shown after AR session starts) */
+    #model-loading {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+    }
+
+    #model-loading p { color: var(--color-white); font-size: 0.9rem; }
+
+    #progress-bar-wrap {
+      width: 220px;
+      height: 6px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    #progress-bar {
+      height: 100%;
+      width: 0%;
+      background: var(--color-gold);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    #progress-label {
+      color: rgba(255,255,255,0.5);
+      font-size: 0.75rem;
+    }
+
+    /* ── Not supported notice ──────────────────────────────── */
+    #not-supported {
+      display: none;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: var(--radius);
+      padding: 22px 20px;
+      max-width: 300px;
+      color: var(--color-white);
+    }
+
+    #not-supported h3 { color: var(--color-gold); margin-bottom: 10px; font-size: 1rem; }
+    #not-supported p  { font-size: 0.82rem; line-height: 1.65; color: rgba(255,255,255,0.75); }
+
+    /* ── Spinner ───────────────────────────────────────────── */
+    .spinner {
+      width: 40px; height: 40px;
+      border: 4px solid rgba(255,255,255,0.15);
+      border-top-color: var(--color-gold);
+      border-radius: 50%;
+      animation: spin 0.9s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Top banner (during AR) ────────────────────────────── */
+    #top-banner {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      background: var(--color-overlay);
+      color: var(--color-white);
+      text-align: center;
+      padding: 10px 50px 10px 16px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      z-index: 100;
+      border-bottom: 2px solid var(--color-gold);
+      display: none;
+    }
+
+    #top-banner span { color: var(--color-gold); }
+
+    /* ── Bottom instruction bar ────────────────────────────── */
+    #bottom-bar {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--color-overlay);
+      color: var(--color-white);
+      text-align: center;
+      padding: 14px 16px;
+      font-size: 0.84rem;
+      z-index: 100;
+      border-top: 1px solid rgba(255,255,255,0.15);
+      display: none;
+    }
+
+    #bottom-bar .hint { color: var(--color-gold); font-weight: 600; }
+
+    /* ── AR control buttons ────────────────────────────────── */
+    #help-btn {
+      position: fixed; top: 8px; right: 10px;
+      width: 34px; height: 34px;
+      background: var(--color-gold); color: var(--color-navy);
+      border: none; border-radius: 50%;
+      font-size: 1.1rem; font-weight: 700;
+      cursor: pointer; z-index: 200;
+      display: none; align-items: center; justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+
+    #exit-ar-btn {
+      position: fixed; top: 8px; left: 10px;
+      padding: 6px 14px;
+      background: var(--color-overlay); color: var(--color-white);
+      border: 1px solid rgba(255,255,255,0.3);
+      border-radius: 20px; font-size: 0.78rem;
+      cursor: pointer; z-index: 200; display: none;
+      font-family: var(--font);
+    }
+
+    #reset-btn {
+      position: fixed; bottom: 64px; right: 14px;
+      padding: 8px 16px;
+      background: var(--color-gold); color: var(--color-navy);
+      border: none; border-radius: 20px;
+      font-size: 0.8rem; font-weight: 700;
+      cursor: pointer; z-index: 200; display: none;
+      font-family: var(--font);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    /* ── Help modal ────────────────────────────────────────── */
+    #help-modal {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      display: none; align-items: center; justify-content: center;
+      z-index: 300; padding: 20px;
+    }
+
+    #help-modal.visible { display: flex; }
+
+    #help-modal .card {
+      background: var(--color-white);
+      border-radius: var(--radius);
+      padding: 24px 22px;
+      max-width: 380px; width: 100%;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+
+    #help-modal h2 {
+      color: var(--color-navy); font-size: 1.1rem;
+      margin-bottom: 14px; border-bottom: 2px solid var(--color-gold);
+      padding-bottom: 8px;
+    }
+
+    #help-modal ol {
+      padding-left: 18px; color: #333;
+      font-size: 0.88rem; line-height: 1.75;
+    }
+
+    #help-modal .close-btn {
+      margin-top: 18px; width: 100%; padding: 10px;
+      background: var(--color-navy); color: var(--color-white);
+      border: none; border-radius: var(--radius);
+      font-size: 0.95rem; font-weight: 600; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ══════════════════════════════════════════════════════
+       A-FRAME COMPONENT REGISTRATIONS
+       Must appear BEFORE <a-scene> is parsed by the browser.
+  ══════════════════════════════════════════════════════ -->
+  <script>
+    /* ──────────────────────────────────────────────────────
+       apply-pbr component
+       Waits for A-Frame's built-in obj-model to finish
+       loading the OBJ, then replaces the basic Phong
+       material with THREE.MeshStandardMaterial using all
+       four PBR maps: diffuse, normal, roughness, metalness.
+    ────────────────────────────────────────────────────── */
+    AFRAME.registerComponent('apply-pbr', {
+      schema: {
+        diffuse:   { type: 'string', default: '' },
+        normal:    { type: 'string', default: '' },
+        roughness: { type: 'string', default: '' },
+        metallic:  { type: 'string', default: '' }
+      },
+
+      init: function () {
+        var self = this;
+        var THREE = AFRAME.THREE;
+        var tl    = new THREE.TextureLoader();
+
+        /* Pre-load all PBR textures in parallel */
+        var maps = {
+          map:          tl.load(this.data.diffuse),
+          normalMap:    tl.load(this.data.normal),
+          roughnessMap: tl.load(this.data.roughness),
+          metalnessMap: tl.load(this.data.metallic)
+        };
+
+        /* Apply when obj-model finishes parsing the OBJ */
+        this.el.addEventListener('model-loaded', function () {
+          self.el.object3D.traverse(function (child) {
+            if (!child.isMesh) return;
+            child.material = new THREE.MeshStandardMaterial(maps);
+            child.material.needsUpdate = true;
+            child.castShadow    = true;
+            child.receiveShadow = true;
+          });
+        });
+      }
+    });
+
+    /* ──────────────────────────────────────────────────────
+       ar-hit-test component
+       WebXR Hit Test API — detects flat real-world surfaces
+       and places the Hari Enclave model on tap.
+    ────────────────────────────────────────────────────── */
+    AFRAME.registerComponent('ar-hit-test', {
+      init: function () {
+        var self = this;
+
+        /* Pre-allocate Three.js objects — avoids GC pressure each frame */
+        this.tempMatrix    = new AFRAME.THREE.Matrix4();
+        this.hitPosition   = new AFRAME.THREE.Vector3();
+        this.hitQuaternion = new AFRAME.THREE.Quaternion();
+        this.tempScale     = new AFRAME.THREE.Vector3();
+
+        this.placed                 = false;
+        this.hasHit                 = false;
+        this.hitTestSource          = null;
+        this.hitTestSourceRequested = false;
+
+        /* ── AR session starts ──────────────────────────── */
+        this.el.sceneEl.addEventListener('enter-vr', function () {
+          if (!self.el.sceneEl.is('ar-mode')) return;
+
+          /* Reset state */
+          self.placed = self.hasHit = false;
+          self.hitTestSource = null;
+          self.hitTestSourceRequested = false;
+
+          /* Bind screen tap → place model */
+          var session = self.el.sceneEl.renderer.xr.getSession();
+          if (session) {
+            session.addEventListener('select', function () { self.onTap(); });
+          }
+
+          /* Show AR UI — hide pre-AR overlay */
+          document.getElementById('top-banner').style.display  = 'block';
+          document.getElementById('bottom-bar').style.display  = 'block';
+          document.getElementById('help-btn').style.display    = 'flex';
+          document.getElementById('exit-ar-btn').style.display = 'block';
+          document.getElementById('loading-overlay').style.display = 'none';
+        });
+
+        /* ── AR session ends ────────────────────────────── */
+        this.el.sceneEl.addEventListener('exit-vr', function () {
+          self.placed = self.hasHit = false;
+          self.hitTestSource = null;
+          self.hitTestSourceRequested = false;
+
+          var model   = document.getElementById('hari-model');
+          var reticle = document.getElementById('reticle');
+          if (model)   model.setAttribute('visible', false);
+          if (reticle) reticle.setAttribute('visible', false);
+
+          document.getElementById('top-banner').style.display  = 'none';
+          document.getElementById('bottom-bar').style.display  = 'none';
+          document.getElementById('help-btn').style.display    = 'none';
+          document.getElementById('exit-ar-btn').style.display = 'none';
+          document.getElementById('reset-btn').style.display   = 'none';
+          document.getElementById('loading-overlay').style.display = 'flex';
+        });
+      },
+
+      tick: function () {
+        var scene = this.el.sceneEl;
+        if (!scene.is('ar-mode')) return;
+        if (this.placed) return;
+
+        var renderer = scene.renderer;
+        var session  = renderer.xr.getSession();
+        if (!session) return;
+
+        var frame = scene.frame;
+        if (!frame) return;
+
+        /* Request hit-test source once per session */
+        if (!this.hitTestSourceRequested) {
+          var self = this;
+          session.requestReferenceSpace('viewer').then(function (viewerSpace) {
+            session.requestHitTestSource({ space: viewerSpace }).then(function (src) {
+              self.hitTestSource = src;
+            }).catch(function (e) {
+              console.warn('[ar-hit-test] requestHitTestSource:', e);
+            });
+          }).catch(function (e) {
+            console.warn('[ar-hit-test] requestReferenceSpace:', e);
+          });
+          this.hitTestSourceRequested = true;
+        }
+
+        if (!this.hitTestSource) return;
+
+        var refSpace = renderer.xr.getReferenceSpace();
+        if (!refSpace) return;
+
+        var results = frame.getHitTestResults(this.hitTestSource);
+        var reticle = document.getElementById('reticle');
+
+        if (results.length > 0) {
+          var pose = results[0].getPose(refSpace);
+          if (pose) {
+            this.tempMatrix.fromArray(pose.transform.matrix);
+            this.tempMatrix.decompose(this.hitPosition, this.hitQuaternion, this.tempScale);
+
+            reticle.object3D.position.copy(this.hitPosition);
+            reticle.object3D.quaternion.copy(this.hitQuaternion);
+            reticle.setAttribute('visible', true);
+            this.hasHit = true;
+
+            var bar = document.getElementById('bottom-bar');
+            if (bar) bar.innerHTML = '<span class="hint">Surface detected!</span> Tap to place Hari Enclave.';
+          }
+        } else {
+          reticle.setAttribute('visible', false);
+          this.hasHit = false;
+
+          var bar2 = document.getElementById('bottom-bar');
+          if (bar2) bar2.innerHTML = '<span class="hint">Scanning…</span> Move phone slowly over a flat surface.';
+        }
+      },
+
+      onTap: function () {
+        var scene = this.el.sceneEl;
+        if (!scene.is('ar-mode') || this.placed || !this.hasHit) return;
+
+        var model = document.getElementById('hari-model');
+        if (!model) return;
+
+        /* Place model at detected surface point */
+        model.object3D.position.copy(this.hitPosition);
+        model.object3D.quaternion.copy(this.hitQuaternion);
+        model.setAttribute('visible', true);
+        this.placed = true;
+
+        document.getElementById('reticle').setAttribute('visible', false);
+        document.getElementById('reset-btn').style.display = 'block';
+
+        var bar = document.getElementById('bottom-bar');
+        if (bar) bar.innerHTML = '<span class="hint">Hari Enclave placed!</span> Walk around to explore.';
+      },
+
+      resetPlacement: function () {
+        this.placed = this.hasHit = false;
+        var model = document.getElementById('hari-model');
+        if (model) model.setAttribute('visible', false);
+        document.getElementById('reset-btn').style.display = 'none';
+        var bar = document.getElementById('bottom-bar');
+        if (bar) bar.innerHTML = '<span class="hint">Scanning…</span> Move phone slowly over a flat surface.';
+      }
+    });
+  </script>
+
+  <!-- ══════════════════════════════════════════════════════
+       HTML UI OVERLAYS
+  ══════════════════════════════════════════════════════ -->
+
+  <!-- Pre-AR start screen -->
+  <div id="loading-overlay">
+    <div class="logo">HARI ENCLAVE</div>
+    <p class="tagline">AR Property Viewer &nbsp;·&nbsp; Place on any surface</p>
+
+    <!-- Spinner while checking WebXR support -->
+    <div id="spinner" class="spinner"></div>
+
+    <!-- Start AR button (revealed after feature check) -->
+    <div id="start-ar-btn">
+      <button onclick="enterAR()">&#9654;&nbsp; Start AR</button>
+      <p class="sub-text">
+        Android Chrome 81+ · iOS Safari 16.4+<br />
+        Works on tables, floors — no printout needed.
+      </p>
+    </div>
+
+    <!-- Model loading progress (shown while OBJ downloads) -->
+    <div id="model-loading">
+      <p>Loading 3D model…</p>
+      <div id="progress-bar-wrap">
+        <div id="progress-bar"></div>
+      </div>
+      <span id="progress-label">0%</span>
+    </div>
+
+    <!-- WebXR not supported message -->
+    <div id="not-supported">
+      <h3>AR Not Supported</h3>
+      <p>
+        <strong>Android:</strong> Use Chrome 81+ with ARCore.<br /><br />
+        <strong>iPhone:</strong> Use Safari on iOS 16.4 or later.<br /><br />
+        Share this link with a compatible device to view in AR.
+      </p>
+    </div>
+  </div>
+
+  <!-- Top banner -->
+  <div id="top-banner">
+    Hari Enclave &nbsp;&mdash;&nbsp; <span>AR View · Surface Detection Active</span>
+  </div>
+
+  <!-- Bottom instruction bar -->
+  <div id="bottom-bar">
+    <span class="hint">Scanning…</span> Move phone slowly over a flat surface.
+  </div>
+
+  <!-- AR controls -->
+  <button id="help-btn" onclick="toggleHelp()" aria-label="Help">?</button>
+  <button id="exit-ar-btn" onclick="exitAR()">✕ Exit</button>
+  <button id="reset-btn" onclick="resetPlacement()">↺ Move</button>
+
+  <!-- Help modal -->
+  <div id="help-modal" role="dialog" aria-modal="true">
+    <div class="card">
+      <h2>How to View Hari Enclave in AR</h2>
+      <ol>
+        <li>Tap <strong>Start AR</strong> and allow camera access.</li>
+        <li>Wait for the 3D model to finish loading (first time only).</li>
+        <li>Point your phone at a <strong>flat surface</strong> — table or floor.</li>
+        <li>A <span style="color:#c9a84c;font-weight:700;">gold ring</span> appears when a surface is detected.</li>
+        <li><strong>Tap</strong> to place the building on that spot.</li>
+        <li>Walk around it to explore all sides and angles.</li>
+        <li>Tap <strong>↺ Move</strong> to pick it up and reposition.</li>
+      </ol>
+      <button class="close-btn" onclick="toggleHelp()">Got it!</button>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       A-FRAME SCENE
+       WebXR hit-test AR — no marker required.
+  ══════════════════════════════════════════════════════ -->
+  <a-scene
+    id="ar-scene"
+    webxr="requiredFeatures: hit-test, local-floor; optionalFeatures: dom-overlay, unbounded; domOverlay: #loading-overlay"
+    vr-mode-ui="enabled: false"
+    renderer="antialias: true; alpha: true; logarithmicDepthBuffer: true; colorManagement: true;"
+    loading-screen="enabled: false"
+    ar-hit-test
+  >
+
+    <!-- ── Asset preloading ────────────────────────────────
+         A-Frame's asset manager fetches base.obj before the
+         scene runs. timeout=180000 allows 3 minutes for
+         the 12 MB file over a slow mobile connection.
+    ──────────────────────────────────────────────────── -->
+    <a-assets timeout="180000">
+      <a-asset-item
+        id="hari-obj"
+        src="model/base.obj"
+      ></a-asset-item>
+    </a-assets>
+
+    <!-- ── Reticle ─────────────────────────────────────────
+         Gold targeting ring shown on detected surfaces.
+         Positioned by the ar-hit-test component each frame.
+    ──────────────────────────────────────────────────── -->
+    <a-entity id="reticle" visible="false">
+      <a-ring
+        rotation="-90 0 0"
+        radius-inner="0.06" radius-outer="0.10"
+        color="#c9a84c"
+        material="side: double; opacity: 0.85; transparent: true;"
+      ></a-ring>
+      <a-circle
+        rotation="-90 0 0"
+        radius="0.018"
+        color="#c9a84c"
+        material="opacity: 0.9;"
+      ></a-circle>
+    </a-entity>
+
+    <!-- ── Hari Enclave 3D model ───────────────────────────
+         Initially hidden. Made visible when the user taps
+         to place it on a detected surface.
+
+         Model bounding box (A-Frame units = metres at 1:1):
+           width  1.627  height 1.196  depth 1.909
+           floor already at Y=0 (no offset needed)
+
+         scale="0.35 0.35 0.35" → real-world size:
+           ~57 cm wide × 42 cm tall × 67 cm deep
+           (a desk/table-sized architectural miniature)
+
+         Bump scale up to 1 1 1 for life-size floor placement.
+    ──────────────────────────────────────────────────── -->
+    <a-entity
+      id="hari-model"
+      obj-model="obj: #hari-obj;"
+      apply-pbr="
+        diffuse:   model/texture_diffuse.png;
+        normal:    model/texture_normal.png;
+        roughness: model/texture_roughness.png;
+        metallic:  model/texture_metallic.png;
+      "
+      visible="false"
+      scale="0.35 0.35 0.35"
+      position="0 0 0"
+    ></a-entity>
+
+    <!-- Camera -->
+    <a-entity id="ar-camera" camera></a-entity>
+
+  </a-scene>
+
+  <script>
+    /* ─────────────────────────────────────────────────────────
+       WebXR support detection
+    ───────────────────────────────────────────────────────── */
+    window.addEventListener('load', function () {
+      var spinner      = document.getElementById('spinner');
+      var startBtn     = document.getElementById('start-ar-btn');
+      var notSupported = document.getElementById('not-supported');
+
+      if (!navigator.xr) {
+        spinner.style.display = 'none';
+        notSupported.style.display = 'block';
+        return;
+      }
+
+      navigator.xr.isSessionSupported('immersive-ar').then(function (ok) {
+        spinner.style.display = 'none';
+        (ok ? startBtn : notSupported).style.display = ok ? 'flex' : 'block';
+      }).catch(function () {
+        spinner.style.display = 'none';
+        notSupported.style.display = 'block';
+      });
+    });
+
+    /* ── Model load progress ─────────────────────────────── */
+    var assetItem = document.getElementById('hari-obj');
+    if (assetItem) {
+      assetItem.addEventListener('progress', function (e) {
+        if (e.detail && e.detail.xhr) {
+          var xhr = e.detail.xhr;
+          if (xhr.total > 0) {
+            var pct = Math.round((xhr.loaded / xhr.total) * 100);
+            document.getElementById('progress-bar').style.width  = pct + '%';
+            document.getElementById('progress-label').textContent = pct + '%';
+          }
+        }
+      });
+    }
+
+    /* When the AR session starts, switch overlay to progress view */
+    document.getElementById('ar-scene').addEventListener('enter-vr', function () {
+      if (!this.is('ar-mode')) return;
+      var modelLoaded = document.getElementById('hari-model').components['obj-model'];
+      /* If OBJ hasn't finished loading yet, show progress bar */
+      if (modelLoaded && !modelLoaded.model) {
+        var startBtn = document.getElementById('start-ar-btn');
+        startBtn.style.display = 'none';
+        document.getElementById('model-loading').style.display = 'flex';
+        document.getElementById('loading-overlay').style.display = 'flex';
+        document.getElementById('loading-overlay').style.background = 'rgba(26,60,94,0.85)';
+
+        /* Hide progress overlay once model finishes */
+        document.getElementById('hari-model').addEventListener('model-loaded', function () {
+          document.getElementById('loading-overlay').style.display = 'none';
+        }, { once: true });
+      }
+    });
+
+    /* ── AR controls ─────────────────────────────────────── */
+    function enterAR() {
+      document.getElementById('ar-scene').enterAR();
+    }
+
+    function exitAR() {
+      document.getElementById('ar-scene').exitVR();
+    }
+
+    function resetPlacement() {
+      var comp = document.getElementById('ar-scene').components['ar-hit-test'];
+      if (comp) comp.resetPlacement();
+    }
+
+    function toggleHelp() {
+      document.getElementById('help-modal').classList.toggle('visible');
+    }
+
+    document.getElementById('help-modal').addEventListener('click', function (e) {
+      if (e.target === this) toggleHelp();
+    });
+  </script>
+
+</body>
+</html>
