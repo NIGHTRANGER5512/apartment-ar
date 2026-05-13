@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Hiro AR Marker — print this and point your phone camera at it to see the AR apartment." />
+  <title>Hiro AR Marker | Apartment AR</title>
+
+  <style>
+    /* =============================================
+       CSS Custom Properties
+    ============================================= */
+    :root {
+      --navy:   #1a3c5e;
+      --gold:   #c9a84c;
+      --white:  #ffffff;
+      --grey:   #f5f5f5;
+    }
+
+    /* ---- Reset ---- */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: var(--grey);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* ---- Header — hidden when printing ---- */
+    header {
+      background: var(--navy);
+      color: var(--white);
+      width: 100%;
+      padding: 16px 24px;
+      text-align: center;
+      border-bottom: 3px solid var(--gold);
+    }
+    header h1 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    header p {
+      font-size: 0.82rem;
+      opacity: 0.75;
+      margin-top: 4px;
+    }
+
+    /* ---- Main content ---- */
+    main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      padding: 30px 20px 40px;
+      width: 100%;
+      max-width: 520px;
+    }
+
+    /* ---- Instruction card ---- */
+    .instruction-card {
+      background: var(--white);
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(26, 60, 94, 0.12);
+      padding: 20px;
+      text-align: center;
+      width: 100%;
+    }
+    .instruction-card h2 {
+      color: var(--navy);
+      font-size: 1.05rem;
+      margin-bottom: 10px;
+    }
+    .instruction-card p {
+      font-size: 0.88rem;
+      color: #4b5563;
+      line-height: 1.6;
+    }
+    .badge {
+      display: inline-block;
+      background: var(--navy);
+      color: var(--white);
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      margin-top: 6px;
+    }
+
+    /* ---- Marker display area ---- */
+    .marker-frame {
+      background: var(--white);
+      border: 3px solid var(--navy);
+      border-radius: 14px;
+      padding: 24px;
+      box-shadow: 0 6px 30px rgba(26, 60, 94, 0.18);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      width: 100%;
+      max-width: 360px;
+    }
+    .marker-title {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: var(--navy);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    #hiro-marker-img {
+      width: min(280px, 80vw);
+      height: min(280px, 80vw);
+      display: block;
+      image-rendering: crisp-edges;
+    }
+    .marker-subtitle {
+      font-size: 0.78rem;
+      color: #6b7280;
+      text-align: center;
+    }
+
+    /* ---- Steps list ---- */
+    .steps {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 100%;
+    }
+    .steps li {
+      background: var(--white);
+      border-radius: 10px;
+      padding: 12px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      box-shadow: 0 2px 8px rgba(26,60,94,0.07);
+      font-size: 0.88rem;
+    }
+    .step-icon {
+      font-size: 1.2rem;
+      line-height: 1.4;
+    }
+
+    /* ---- Action buttons ---- */
+    .actions {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      justify-content: center;
+      width: 100%;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 11px 22px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.92rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+      text-decoration: none;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary {
+      background: var(--navy);
+      color: var(--white);
+    }
+    .btn-gold {
+      background: var(--gold);
+      color: var(--navy);
+    }
+    .btn:hover { opacity: 0.88; }
+
+    /* ---- Footer ---- */
+    footer {
+      font-size: 0.75rem;
+      color: #9ca3af;
+      padding: 10px;
+      text-align: center;
+    }
+
+    /* ===========================================
+       PRINT STYLES
+       When printing: show ONLY the marker image,
+       hide everything else for a clean printout.
+    =========================================== */
+    @media print {
+      header,
+      .instruction-card,
+      .steps,
+      .actions,
+      footer,
+      .marker-title,
+      .marker-subtitle {
+        display: none !important;
+      }
+
+      body {
+        background: var(--white);
+        display: block;
+      }
+
+      main {
+        padding: 0;
+        margin: 0;
+      }
+
+      .marker-frame {
+        border: none;
+        box-shadow: none;
+        padding: 0;
+        margin: 0 auto;
+        max-width: 100%;
+      }
+
+      #hiro-marker-img {
+        width: 14cm;
+        height: 14cm;
+        margin: 2cm auto;
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ============================================================
+       HEADER — hidden when printing
+  ============================================================ -->
+  <header>
+    <h1>🎯 Hiro AR Marker</h1>
+    <p>Print this marker or show it on a second device for AR detection</p>
+  </header>
+
+  <main>
+
+    <!-- ============================================================
+         INSTRUCTION CARD
+    ============================================================ -->
+    <div class="instruction-card">
+      <h2>Show this to your camera to view the AR apartment</h2>
+      <p>
+        Your customer scans the QR code on their phone → opens a webpage → points the camera at this marker → the 3D apartment model appears floating above it.
+      </p>
+      <span class="badge">No app download required</span>
+    </div>
+
+    <!-- ============================================================
+         MARKER IMAGE — large and centered
+    ============================================================ -->
+    <div class="marker-frame" id="print-area">
+      <p class="marker-title">Hiro Marker</p>
+      <img
+        id="hiro-marker-img"
+        src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png"
+        alt="Hiro AR Marker — the camera needs to see this image to show AR"
+      />
+      <p class="marker-subtitle">Keep this fully visible in camera frame<br/>Good lighting recommended</p>
+    </div>
+
+    <!-- ============================================================
+         STEP-BY-STEP GUIDE
+    ============================================================ -->
+    <ul class="steps" role="list" aria-label="How to use the Hiro marker">
+      <li>
+        <span class="step-icon">1️⃣</span>
+        <span><strong>Print this page</strong> on A4 paper — the marker should be at least 10×10 cm. Or open this page on a second phone/tablet.</span>
+      </li>
+      <li>
+        <span class="step-icon">2️⃣</span>
+        <span><strong>Customer opens</strong> the AR link on their phone (via QR scan or WhatsApp link). They must allow camera access.</span>
+      </li>
+      <li>
+        <span class="step-icon">3️⃣</span>
+        <span><strong>Point camera at this marker</strong> — hold the phone 20–50 cm away, in good lighting. The 3D apartment will float above it.</span>
+      </li>
+      <li>
+        <span class="step-icon">4️⃣</span>
+        <span><strong>Move slowly</strong> and keep the marker in frame. The model rotates automatically so all rooms are visible.</span>
+      </li>
+    </ul>
+
+    <!-- ============================================================
+         ACTION BUTTONS
+    ============================================================ -->
+    <div class="actions">
+      <button class="btn btn-primary" onclick="window.print()" id="print-btn">🖨️ Print Marker</button>
+      <a class="btn btn-gold" href="qr.html" id="qr-link-btn">📱 Generate QR Code</a>
+    </div>
+
+  </main>
+
+  <footer>
+    Tribhuvan Realty &nbsp;·&nbsp; Apartment AR System &nbsp;·&nbsp; No app needed
+  </footer>
+
+</body>
+</html>

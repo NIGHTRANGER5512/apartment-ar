@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Generate a QR code for your Apartment AR experience — for brochures and WhatsApp." />
+  <title>QR Code Generator | Apartment AR</title>
+
+  <!-- QRious.js — QR code generator via canvas -->
+  <script src="https://cdn.jsdelivr.net/npm/qrious@4.0.2/dist/qrious.min.js"></script>
+
+  <style>
+    /* =============================================
+       CSS Custom Properties
+    ============================================= */
+    :root {
+      --navy:       #1a3c5e;
+      --gold:       #c9a84c;
+      --white:      #ffffff;
+      --light-grey: #f5f5f5;
+      --card-bg:    #ffffff;
+      --text:       #1a1a2e;
+      --muted:      #6b7280;
+      --radius:     12px;
+      --shadow:     0 4px 24px rgba(26, 60, 94, 0.12);
+    }
+
+    /* ---- Reset ---- */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: var(--light-grey);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 40px;
+    }
+
+    /* ---- Header ---- */
+    header {
+      background: var(--navy);
+      color: var(--white);
+      padding: 20px 24px;
+      text-align: center;
+      border-bottom: 3px solid var(--gold);
+    }
+    header h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    header p {
+      font-size: 0.85rem;
+      opacity: 0.75;
+      margin-top: 4px;
+    }
+    .gold-dot {
+      color: var(--gold);
+    }
+
+    /* ---- Container ---- */
+    .container {
+      max-width: 560px;
+      margin: 0 auto;
+      padding: 24px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* ---- Card ---- */
+    .card {
+      background: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 22px 20px;
+    }
+    .card h2 {
+      font-size: 1rem;
+      color: var(--navy);
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .card h2 .icon { font-size: 1.2rem; }
+
+    /* ---- URL Input group ---- */
+    .input-group {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .input-group input[type="url"],
+    .input-group input[type="text"] {
+      flex: 1;
+      min-width: 180px;
+      padding: 10px 14px;
+      border: 1.5px solid #d1d5db;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .input-group input:focus {
+      border-color: var(--gold);
+    }
+
+    /* ---- Buttons ---- */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 10px 18px;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary {
+      background: var(--navy);
+      color: var(--white);
+    }
+    .btn-gold {
+      background: var(--gold);
+      color: var(--navy);
+    }
+    .btn-outline {
+      background: transparent;
+      color: var(--navy);
+      border: 1.5px solid var(--navy);
+    }
+    .btn:hover { opacity: 0.88; }
+
+    /* ---- QR Display ---- */
+    .qr-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+    }
+    #qr-canvas {
+      border: 3px solid var(--navy);
+      border-radius: 8px;
+      display: block;
+    }
+    .qr-label {
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-align: center;
+    }
+    .qr-url-display {
+      font-size: 0.8rem;
+      color: var(--navy);
+      word-break: break-all;
+      background: var(--light-grey);
+      border-radius: 6px;
+      padding: 8px 10px;
+      text-align: center;
+      width: 100%;
+    }
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    /* ---- Marker preview ---- */
+    .marker-preview {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    .marker-preview img {
+      width: 140px;
+      height: 140px;
+      border: 2px solid var(--navy);
+      border-radius: 6px;
+    }
+    .marker-caption {
+      font-size: 0.8rem;
+      color: var(--muted);
+      text-align: center;
+      max-width: 260px;
+      line-height: 1.5;
+    }
+
+    /* ---- Instructions list ---- */
+    .instructions {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .instructions li {
+      display: flex;
+      gap: 10px;
+      align-items: flex-start;
+      font-size: 0.88rem;
+      line-height: 1.5;
+    }
+    .step-num {
+      background: var(--navy);
+      color: var(--white);
+      border-radius: 50%;
+      width: 22px;
+      height: 22px;
+      min-width: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.72rem;
+      font-weight: 700;
+      margin-top: 1px;
+    }
+
+    /* ---- Toast notification ---- */
+    #toast {
+      display: none;
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--navy);
+      color: var(--white);
+      padding: 10px 22px;
+      border-radius: 24px;
+      font-size: 0.88rem;
+      z-index: 999;
+      border: 1px solid var(--gold);
+      white-space: nowrap;
+    }
+    #toast.show { display: block; animation: toastIn 0.3s ease; }
+    @keyframes toastIn {
+      from { opacity: 0; bottom: 10px; }
+      to   { opacity: 1; bottom: 24px; }
+    }
+
+    /* ---- Responsive ---- */
+    @media (max-width: 400px) {
+      header h1 { font-size: 1.2rem; }
+      .btn { font-size: 0.82rem; padding: 9px 14px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <h1>🏠 Apartment AR &nbsp;<span class="gold-dot">·</span>&nbsp; QR Generator</h1>
+    <p>Generate a QR code to put on brochures or share via WhatsApp</p>
+  </header>
+
+  <main class="container">
+
+    <!-- ============================================================
+         CARD 1 — URL input and QR generation
+    ============================================================ -->
+    <section class="card" aria-labelledby="gen-heading">
+      <h2><span class="icon">🔗</span> <span id="gen-heading">Enter your GitHub Pages URL</span></h2>
+      <div class="input-group">
+        <input
+          type="url"
+          id="url-input"
+          placeholder="https://YOUR-USERNAME.github.io/apartment-ar/"
+          value="https://YOUR-USERNAME.github.io/apartment-ar/"
+          aria-label="GitHub Pages URL"
+        />
+        <button class="btn btn-primary" onclick="generateQR()" id="gen-btn">Generate QR</button>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         CARD 2 — QR Code output
+    ============================================================ -->
+    <section class="card" aria-labelledby="qr-heading">
+      <h2><span class="icon">📱</span> <span id="qr-heading">Your QR Code</span></h2>
+      <div class="qr-wrapper">
+        <canvas id="qr-canvas" width="220" height="220" aria-label="Generated QR code"></canvas>
+        <p class="qr-url-display" id="qr-url-label">https://YOUR-USERNAME.github.io/apartment-ar/</p>
+        <div class="btn-row">
+          <button class="btn btn-gold" onclick="downloadQR()" id="download-btn">⬇ Download QR PNG</button>
+          <button class="btn btn-outline" onclick="copyLink()" id="copy-btn">📋 Copy Link</button>
+        </div>
+        <p class="qr-label">Size shown: 220 × 220 px &nbsp;|&nbsp; Download is 400 × 400 px (print quality)</p>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         CARD 3 — Hiro Marker display
+    ============================================================ -->
+    <section class="card" aria-labelledby="marker-heading">
+      <h2><span class="icon">🎯</span> <span id="marker-heading">Hiro AR Marker</span></h2>
+      <div class="marker-preview">
+        <img
+          src="https://raw.githubusercontent.com/AR-js-org/AR.js/master/data/images/hiro.png"
+          alt="Hiro AR Marker — print this and point your camera at it"
+          id="hiro-img"
+        />
+        <p class="marker-caption">
+          Print this marker alongside your QR code — or open
+          <strong>marker.html</strong> on a second device.<br/>
+          Customers point their phone camera at this marker to see the AR apartment.
+        </p>
+        <a href="marker.html" target="_blank" class="btn btn-outline" id="open-marker-btn">Open Marker Page</a>
+      </div>
+    </section>
+
+    <!-- ============================================================
+         CARD 4 — How to use instructions
+    ============================================================ -->
+    <section class="card" aria-labelledby="instr-heading">
+      <h2><span class="icon">📖</span> <span id="instr-heading">How to Use</span></h2>
+      <ul class="instructions" role="list">
+        <li>
+          <span class="step-num">1</span>
+          <span><strong>Print on brochure</strong> — Add the QR code and Hiro marker. Recommended QR size: at least 3 × 3 cm.</span>
+        </li>
+        <li>
+          <span class="step-num">2</span>
+          <span><strong>Share on WhatsApp</strong> — Download the QR image and send it to clients, or paste the URL directly in the chat.</span>
+        </li>
+        <li>
+          <span class="step-num">3</span>
+          <span><strong>Customer scans</strong> — They open the link, allow camera, point at the marker, and see the 3D apartment float above it.</span>
+        </li>
+        <li>
+          <span class="step-num">4</span>
+          <span><strong>No app needed</strong> — Works in Chrome (Android) and Safari (iOS 12+) directly in the browser.</span>
+        </li>
+      </ul>
+    </section>
+
+  </main>
+
+  <!-- Toast notification -->
+  <div id="toast" role="status" aria-live="polite">✅ Link copied!</div>
+
+  <!-- ============================================================
+       JAVASCRIPT
+  ============================================================ -->
+  <script>
+    /* ------------------------------------------------------------
+       generateQR — read URL input, draw QR on canvas via QRious
+    ------------------------------------------------------------ */
+    function generateQR() {
+      var url = document.getElementById('url-input').value.trim();
+      if (!url) {
+        alert('Please enter a URL first.');
+        return;
+      }
+
+      /* QRious renders directly onto the canvas element */
+      new QRious({
+        element: document.getElementById('qr-canvas'),
+        value: url,
+        size: 220,
+        foreground: '#1a3c5e',   /* navy */
+        background: '#ffffff',
+        level: 'H'               /* High error correction — survives brochure printing */
+      });
+
+      document.getElementById('qr-url-label').textContent = url;
+    }
+
+    /* ------------------------------------------------------------
+       downloadQR — render a larger 400x400 QR and save as PNG
+    ------------------------------------------------------------ */
+    function downloadQR() {
+      var url = document.getElementById('url-input').value.trim();
+      if (!url) {
+        alert('Please generate a QR code first.');
+        return;
+      }
+
+      /* Create a hidden off-screen canvas at print quality size */
+      var printCanvas = document.createElement('canvas');
+      new QRious({
+        element: printCanvas,
+        value: url,
+        size: 400,
+        foreground: '#1a3c5e',
+        background: '#ffffff',
+        level: 'H'
+      });
+
+      /* Trigger browser file download */
+      var link = document.createElement('a');
+      link.download = 'apartment-ar-qr.png';
+      link.href = printCanvas.toDataURL('image/png');
+      link.click();
+    }
+
+    /* ------------------------------------------------------------
+       copyLink — copy the URL to clipboard and show toast
+    ------------------------------------------------------------ */
+    function copyLink() {
+      var url = document.getElementById('url-input').value.trim();
+      if (!url) {
+        alert('Please enter a URL first.');
+        return;
+      }
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(url).then(function () {
+          showToast('✅ Link copied to clipboard!');
+        }).catch(function () {
+          fallbackCopy(url);
+        });
+      } else {
+        fallbackCopy(url);
+      }
+    }
+
+    /* Fallback copy for older mobile browsers */
+    function fallbackCopy(text) {
+      var ta = document.createElement('textarea');
+      ta.value = text;
+      ta.style.position = 'fixed';
+      ta.style.opacity = '0';
+      document.body.appendChild(ta);
+      ta.select();
+      try {
+        document.execCommand('copy');
+        showToast('✅ Link copied!');
+      } catch (e) {
+        showToast('⚠️ Copy failed — select the URL manually.');
+      }
+      document.body.removeChild(ta);
+    }
+
+    /* ------------------------------------------------------------
+       showToast — display a temporary notification bar
+    ------------------------------------------------------------ */
+    function showToast(msg) {
+      var toast = document.getElementById('toast');
+      toast.textContent = msg;
+      toast.classList.add('show');
+      setTimeout(function () { toast.classList.remove('show'); }, 2500);
+    }
+
+    /* ------------------------------------------------------------
+       Auto-generate QR on page load with placeholder URL
+    ------------------------------------------------------------ */
+    window.addEventListener('load', function () {
+      generateQR();
+    });
+
+    /* Regenerate whenever the user finishes typing (on Enter) */
+    document.getElementById('url-input').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { generateQR(); }
+    });
+  </script>
+
+</body>
+</html>
