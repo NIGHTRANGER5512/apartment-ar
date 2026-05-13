@@ -7,27 +7,23 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <title>Hari Enclave — AR Viewer</title>
 
-  <!--
-    @google/model-viewer 4.2.0
-    Handles AR on every platform automatically:
-      iOS 12+  → AR Quick Look   (native ARKit, no WebXR needed)
-      Android  → WebXR hit-test  (Chrome + ARCore)
-      Android  → Scene Viewer    (Google native app fallback)
-    ES module — works in all modern Chrome and Safari versions.
-  -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&family=Great+Vibes&family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet" />
+
   <script type="module"
     src="https://cdn.jsdelivr.net/npm/@google/model-viewer@4.2.0/dist/model-viewer.min.js">
   </script>
 
   <style>
-    /* ── CSS custom properties ─────────────────────────────── */
     :root {
-      --color-navy:    #1a3c5e;
-      --color-gold:    #c9a84c;
-      --color-white:   #ffffff;
-      --color-overlay: rgba(0, 0, 0, 0.6);
-      --radius:        10px;
-      --font:          'Segoe UI', Arial, sans-serif;
+      --navy:   #0d1e30;
+      --gold:   #c9a84c;
+      --red:    #c0392b;
+      --white:  #ffffff;
+      --font-serif: 'Playfair Display', Georgia, serif;
+      --font-sans:  'Montserrat', 'Segoe UI', Arial, sans-serif;
+      --font-script:'Great Vibes', cursive;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -36,10 +32,9 @@
       width: 100%; height: 100%;
       overflow: hidden;
       background: #111;
-      font-family: var(--font);
+      font-family: var(--font-sans);
     }
 
-    /* ── model-viewer fills viewport ───────────────────────── */
     model-viewer {
       width: 100vw;
       height: 100vh;
@@ -47,140 +42,393 @@
       --poster-color: #111;
     }
 
-    /* ── Loading overlay (shown while GLB downloads) ───────── */
-    model-viewer::part(default-progress-bar) {
-      display: none; /* we use our own progress UI */
+    model-viewer::part(default-progress-bar) { display: none; }
+
+    /* ── Keyframes ─────────────────────────────────────────────── */
+    @keyframes letterIn {
+      from { opacity: 0; transform: translateY(18px) scale(0.85); }
+      to   { opacity: 1; transform: translateY(0)    scale(1); }
     }
 
+    @keyframes logoIn {
+      from { opacity: 0; transform: scale(0.7) rotate(-6deg); }
+      to   { opacity: 1; transform: scale(1)   rotate(0deg); }
+    }
+
+    @keyframes expandLine {
+      from { transform: scaleX(0); }
+      to   { transform: scaleX(1); }
+    }
+
+    @keyframes dotPulse {
+      0%, 100% { opacity: 0.18; r: 3; }
+      50%       { opacity: 0.55; r: 4.5; }
+    }
+
+    @keyframes linePulse {
+      0%, 100% { opacity: 0.08; }
+      50%       { opacity: 0.22; }
+    }
+
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(14px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes btnPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(201,168,76,0.55); }
+      50%       { box-shadow: 0 0 0 12px rgba(201,168,76,0); }
+    }
+
+    @keyframes screenExit {
+      0%   { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1.04); }
+    }
+
+    @keyframes slideRight {
+      from { transform: scaleX(0); opacity: 0; }
+      to   { transform: scaleX(1); opacity: 1; }
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: -400px 0; }
+      100% { background-position:  400px 0; }
+    }
+
+    /* ── Loading screen ────────────────────────────────────────── */
     #loading-screen {
       position: fixed;
       inset: 0;
-      background: var(--color-navy);
+      background: var(--navy);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       z-index: 9999;
       text-align: center;
-      padding: 24px;
-      transition: opacity 0.6s ease;
+      padding: 28px 24px;
+      overflow: hidden;
     }
 
-    #loading-screen.hidden {
-      opacity: 0;
+    #loading-screen.hide {
+      animation: screenExit 0.65s cubic-bezier(0.4,0,0.2,1) forwards;
       pointer-events: none;
     }
 
-    #loading-screen .logo {
-      font-size: 2rem;
+    /* Particle SVG background */
+    #particles {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    #particles circle {
+      fill: var(--gold);
+      animation: dotPulse 3.5s ease-in-out infinite;
+    }
+
+    #particles line {
+      stroke: var(--gold);
+      stroke-width: 0.8;
+      animation: linePulse 4s ease-in-out infinite;
+    }
+
+    /* Stagger dot animations */
+    #particles circle:nth-child(2)  { animation-delay: 0.4s; }
+    #particles circle:nth-child(3)  { animation-delay: 0.8s; }
+    #particles circle:nth-child(4)  { animation-delay: 1.2s; }
+    #particles circle:nth-child(5)  { animation-delay: 1.6s; }
+    #particles circle:nth-child(6)  { animation-delay: 2.0s; }
+    #particles circle:nth-child(7)  { animation-delay: 0.6s; }
+    #particles circle:nth-child(8)  { animation-delay: 1.0s; }
+    #particles circle:nth-child(9)  { animation-delay: 1.4s; }
+    #particles circle:nth-child(10) { animation-delay: 1.8s; }
+    #particles circle:nth-child(11) { animation-delay: 2.2s; }
+    #particles circle:nth-child(12) { animation-delay: 0.3s; }
+    #particles circle:nth-child(13) { animation-delay: 0.9s; }
+    #particles circle:nth-child(14) { animation-delay: 1.5s; }
+
+    /* Content wrapper — sits above particles */
+    #ls-content {
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      width: 100%;
+      max-width: 340px;
+    }
+
+    /* Company badge */
+    #company-badge {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      animation: fadeUp 0.7s ease both;
+      animation-delay: 0.2s;
+      margin-bottom: 18px;
+    }
+
+    #company-badge .logo-mark {
+      width: 38px;
+      height: 38px;
+      flex-shrink: 0;
+      animation: logoIn 0.8s cubic-bezier(0.34,1.56,0.64,1) both;
+      animation-delay: 0.3s;
+    }
+
+    #company-badge .company-text {
+      text-align: left;
+    }
+
+    #company-badge .company-name {
+      font-family: var(--font-serif);
+      font-size: 0.82rem;
       font-weight: 700;
-      color: var(--color-gold);
-      letter-spacing: 2px;
-      margin-bottom: 6px;
+      color: var(--gold);
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      line-height: 1.2;
     }
 
-    #loading-screen .tagline {
-      color: rgba(255,255,255,0.6);
-      font-size: 0.85rem;
-      margin-bottom: 30px;
+    #company-badge .company-sub {
+      font-size: 0.62rem;
+      color: rgba(255,255,255,0.45);
+      letter-spacing: 0.5px;
+      margin-top: 1px;
     }
 
-    #progress-wrap {
-      width: 220px;
-      height: 5px;
-      background: rgba(255,255,255,0.12);
-      border-radius: 3px;
-      overflow: hidden;
+    /* Gold divider */
+    .gold-divider {
+      width: 180px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--gold), transparent);
+      transform-origin: center;
+      animation: expandLine 0.9s cubic-bezier(0.4,0,0.2,1) both;
+      animation-delay: 0.6s;
+      margin-bottom: 20px;
+    }
+
+    /* House icon */
+    #house-icon {
+      width: 76px;
+      height: 42px;
+      margin-bottom: 14px;
+      animation: fadeUp 0.7s ease both;
+      animation-delay: 0.75s;
+    }
+
+    /* HARI ENCLAVE animated letters */
+    #brand-name {
+      font-family: var(--font-serif);
+      font-size: 2.05rem;
+      font-weight: 700;
+      color: var(--white);
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      line-height: 1;
       margin-bottom: 10px;
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+
+    #brand-name .letter {
+      display: inline-block;
+      opacity: 0;
+      animation: letterIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    }
+
+    #brand-name .space {
+      display: inline-block;
+      width: 0.55em;
+    }
+
+    /* Tagline in Great Vibes */
+    #tagline {
+      font-family: var(--font-script);
+      font-size: 1.3rem;
+      color: var(--gold);
+      opacity: 0;
+      animation: fadeUp 0.7s ease forwards;
+      animation-delay: 2.1s;
+      margin-bottom: 16px;
+    }
+
+    /* Decorative line under tagline */
+    .deco-line {
+      width: 120px;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(201,168,76,0.5), transparent);
+      margin-bottom: 14px;
+      transform-origin: center;
+      animation: expandLine 0.7s ease both;
+      animation-delay: 2.3s;
+    }
+
+    /* PREMIUM badge */
+    #premium-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards;
+      animation-delay: 2.5s;
+    }
+
+    #premium-badge .diamond {
+      width: 6px;
+      height: 6px;
+      background: var(--gold);
+      transform: rotate(45deg);
+      flex-shrink: 0;
+    }
+
+    #premium-badge .badge-text {
+      font-family: var(--font-sans);
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--gold);
+      letter-spacing: 2.5px;
+      text-transform: uppercase;
+    }
+
+    /* Address */
+    #address {
+      font-size: 0.62rem;
+      color: rgba(255,255,255,0.38);
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      margin-bottom: 28px;
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards;
+      animation-delay: 2.7s;
+    }
+
+    /* Progress bar */
+    #progress-wrap {
+      width: 200px;
+      height: 2px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 8px;
+      opacity: 0;
+      animation: fadeUp 0.5s ease forwards;
+      animation-delay: 2.9s;
     }
 
     #progress-fill {
       height: 100%;
       width: 0%;
-      background: var(--color-gold);
-      border-radius: 3px;
-      transition: width 0.25s ease;
+      background: linear-gradient(90deg, var(--gold), #e8c86a, var(--gold));
+      background-size: 400px 100%;
+      border-radius: 2px;
+      transition: width 0.3s ease;
+      animation: shimmer 1.8s linear infinite;
     }
 
     #progress-pct {
-      color: rgba(255,255,255,0.45);
-      font-size: 0.75rem;
+      font-size: 0.65rem;
+      color: rgba(255,255,255,0.3);
+      letter-spacing: 1px;
+      opacity: 0;
+      animation: fadeUp 0.5s ease forwards;
+      animation-delay: 3.0s;
     }
 
-    /* ── Top title bar ─────────────────────────────────────── */
+    /* ── Top title bar ─────────────────────────────────────────── */
     #title-bar {
       position: fixed;
       top: 0; left: 0; right: 0;
-      background: var(--color-overlay);
-      color: var(--color-white);
+      background: rgba(13,30,48,0.85);
+      backdrop-filter: blur(8px);
+      color: var(--white);
       text-align: center;
       padding: 11px 50px 11px 16px;
-      font-size: 0.88rem;
+      font-family: var(--font-sans);
+      font-size: 0.85rem;
       font-weight: 600;
       letter-spacing: 0.5px;
-      border-bottom: 2px solid var(--color-gold);
+      border-bottom: 2px solid var(--gold);
       z-index: 50;
       pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.6s ease;
     }
 
-    #title-bar span { color: var(--color-gold); }
+    #title-bar.visible { opacity: 1; }
+    #title-bar span { color: var(--gold); }
 
-    /* ── Bottom hint bar ───────────────────────────────────── */
+    /* ── Bottom hint bar ───────────────────────────────────────── */
     #hint-bar {
       position: fixed;
       bottom: 0; left: 0; right: 0;
-      background: var(--color-overlay);
-      color: rgba(255,255,255,0.7);
+      background: rgba(0,0,0,0.6);
+      color: rgba(255,255,255,0.65);
       text-align: center;
       padding: 10px 16px;
-      font-size: 0.78rem;
-      border-top: 1px solid rgba(255,255,255,0.1);
+      font-family: var(--font-sans);
+      font-size: 0.75rem;
+      border-top: 1px solid rgba(255,255,255,0.08);
       z-index: 50;
       pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.6s ease;
     }
 
-    /* ── Help button ───────────────────────────────────────── */
+    #hint-bar.visible { opacity: 1; }
+
+    /* ── Help button ───────────────────────────────────────────── */
     #help-btn {
       position: fixed;
       top: 8px; right: 10px;
       width: 34px; height: 34px;
-      background: var(--color-gold);
-      color: var(--color-navy);
+      background: var(--gold);
+      color: var(--navy);
       border: none; border-radius: 50%;
       font-size: 1.1rem; font-weight: 700;
       cursor: pointer; z-index: 200;
-      display: flex; align-items: center; justify-content: center;
+      display: none;
+      align-items: center; justify-content: center;
       box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      font-family: var(--font-sans);
     }
 
-    /* ── Custom AR button (slot inside model-viewer) ───────── */
+    #help-btn.visible {
+      display: flex;
+    }
+
+    /* ── AR button ─────────────────────────────────────────────── */
     #ar-btn {
-      /* model-viewer positions slotted ar-button at bottom center */
-      background: var(--color-gold);
-      color: var(--color-navy);
+      background: linear-gradient(135deg, #d4a84c, #c9a84c, #b8963d);
+      color: var(--navy);
       border: none;
       border-radius: 30px;
       padding: 14px 36px;
       font-size: 1rem;
       font-weight: 700;
-      font-family: var(--font);
+      font-family: var(--font-sans);
       cursor: pointer;
-      box-shadow: 0 4px 20px rgba(201,168,76,0.55);
-      margin-bottom: 80px;  /* lift above hint bar */
+      margin-bottom: 80px;
       display: flex;
       align-items: center;
       gap: 8px;
       transition: opacity 0.2s, transform 0.15s;
+      animation: btnPulse 2.5s ease-in-out infinite;
     }
 
     #ar-btn:active { opacity: 0.85; transform: scale(0.97); }
 
-    /* model-viewer hides the AR button if AR is not available */
     #ar-btn svg {
-      width: 20px; height: 20px; fill: var(--color-navy);
+      width: 20px; height: 20px; fill: var(--navy);
     }
 
-    /* ── Help modal ────────────────────────────────────────── */
+    /* ── Help modal ────────────────────────────────────────────── */
     #help-modal {
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.75);
@@ -191,18 +439,19 @@
     #help-modal.visible { display: flex; }
 
     #help-modal .card {
-      background: var(--color-white);
-      border-radius: var(--radius);
+      background: var(--white);
+      border-radius: 10px;
       padding: 24px 22px;
       max-width: 380px; width: 100%;
       box-shadow: 0 8px 32px rgba(0,0,0,0.5);
     }
 
     #help-modal h2 {
-      color: var(--color-navy); font-size: 1.1rem;
+      color: var(--navy); font-size: 1.1rem;
       margin-bottom: 14px;
-      border-bottom: 2px solid var(--color-gold);
+      border-bottom: 2px solid var(--gold);
       padding-bottom: 8px;
+      font-family: var(--font-serif);
     }
 
     #help-modal ol {
@@ -211,7 +460,7 @@
     }
 
     #help-modal .section-label {
-      font-weight: 700; color: var(--color-navy);
+      font-weight: 700; color: var(--navy);
       margin-top: 12px; margin-bottom: 4px;
       font-size: 0.82rem; text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -219,49 +468,123 @@
 
     #help-modal .close-btn {
       margin-top: 18px; width: 100%; padding: 10px;
-      background: var(--color-navy); color: var(--color-white);
-      border: none; border-radius: var(--radius);
+      background: var(--navy); color: var(--white);
+      border: none; border-radius: 10px;
       font-size: 0.95rem; font-weight: 600; cursor: pointer;
+      font-family: var(--font-sans);
     }
   </style>
 </head>
 <body>
 
-  <!-- ── Loading screen ─────────────────────────────────────── -->
+  <!-- ── Loading screen ─────────────────────────────────────────── -->
   <div id="loading-screen">
-    <div class="logo">HARI ENCLAVE</div>
-    <p class="tagline">AR Property Viewer · iPhone &amp; Android</p>
-    <div id="progress-wrap">
-      <div id="progress-fill"></div>
-    </div>
-    <span id="progress-pct">Loading model…</span>
-  </div>
 
-  <!-- ── Top title bar ──────────────────────────────────────── -->
+    <!-- Particle network background -->
+    <svg id="particles" viewBox="0 0 375 812" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      <!-- Dots -->
+      <circle cx="30"  cy="80"  r="3" />
+      <circle cx="100" cy="40"  r="3" />
+      <circle cx="200" cy="60"  r="3" />
+      <circle cx="310" cy="90"  r="3" />
+      <circle cx="350" cy="180" r="3" />
+      <circle cx="340" cy="320" r="3" />
+      <circle cx="355" cy="500" r="3" />
+      <circle cx="300" cy="680" r="3" />
+      <circle cx="180" cy="760" r="3" />
+      <circle cx="60"  cy="720" r="3" />
+      <circle cx="20"  cy="580" r="3" />
+      <circle cx="35"  cy="400" r="3" />
+      <circle cx="25"  cy="240" r="3" />
+      <circle cx="160" cy="160" r="3" />
+      <!-- Lines -->
+      <line x1="30"  y1="80"  x2="100" y2="40"  />
+      <line x1="100" y1="40"  x2="200" y2="60"  />
+      <line x1="200" y1="60"  x2="310" y2="90"  />
+      <line x1="310" y1="90"  x2="350" y2="180" />
+      <line x1="350" y1="180" x2="340" y2="320" />
+      <line x1="340" y1="320" x2="355" y2="500" />
+      <line x1="355" y1="500" x2="300" y2="680" />
+      <line x1="300" y1="680" x2="180" y2="760" />
+      <line x1="180" y1="760" x2="60"  y2="720" />
+      <line x1="60"  y1="720" x2="20"  y2="580" />
+      <line x1="20"  y1="580" x2="35"  y2="400" />
+      <line x1="35"  y1="400" x2="25"  y2="240" />
+      <line x1="25"  y1="240" x2="30"  y2="80"  />
+      <line x1="160" y1="160" x2="200" y2="60"  />
+      <line x1="160" y1="160" x2="100" y2="40"  />
+      <line x1="160" y1="160" x2="25"  y2="240" />
+    </svg>
+
+    <!-- Main content -->
+    <div id="ls-content">
+
+      <!-- Company badge -->
+      <div id="company-badge">
+        <!-- Tribhuvan Awas SVG logo mark -->
+        <svg class="logo-mark" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="19" cy="19" r="18" stroke="#c9a84c" stroke-width="1.2"/>
+          <path d="M19 7 L30 17 L30 30 L8 30 L8 17 Z" fill="none" stroke="#c9a84c" stroke-width="1.5" stroke-linejoin="round"/>
+          <rect x="15.5" y="23" width="7" height="7" rx="0.5" fill="none" stroke="#c9a84c" stroke-width="1.2"/>
+          <text x="19" y="21" text-anchor="middle" font-family="Georgia,serif" font-size="7.5" font-weight="bold" fill="#c9a84c">TA</text>
+        </svg>
+        <div class="company-text">
+          <div class="company-name">Tribhuvan Awas</div>
+          <div class="company-sub">Pvt. Ltd. &nbsp;·&nbsp; Est. Since 2010</div>
+        </div>
+      </div>
+
+      <!-- Gold divider -->
+      <div class="gold-divider"></div>
+
+      <!-- House icon (double-peak) -->
+      <svg id="house-icon" viewBox="0 0 80 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M4 38 L24 10 L44 38" stroke="#c9a84c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M28 38 L52 4 L76 38" stroke="#c9a84c" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+
+      <!-- Brand name — letters injected by JS -->
+      <div id="brand-name"></div>
+
+      <!-- Tagline -->
+      <div id="tagline">Perfect home with perfect space</div>
+
+      <!-- Deco line -->
+      <div class="deco-line"></div>
+
+      <!-- Premium badge -->
+      <div id="premium-badge">
+        <div class="diamond"></div>
+        <span class="badge-text">Premium 3 BHK Flats</span>
+        <div class="diamond"></div>
+      </div>
+
+      <!-- Address -->
+      <div id="address">New A.G. Colony, R.K. Puram &nbsp;|&nbsp; Danapur, Patna</div>
+
+      <!-- Progress bar -->
+      <div id="progress-wrap">
+        <div id="progress-fill"></div>
+      </div>
+      <span id="progress-pct">Loading model…</span>
+
+    </div><!-- /ls-content -->
+  </div><!-- /loading-screen -->
+
+  <!-- ── Top title bar ──────────────────────────────────────────── -->
   <div id="title-bar">
     Hari Enclave &nbsp;&mdash;&nbsp; <span>3D &amp; AR Viewer</span>
   </div>
 
-  <!-- ── Help button ────────────────────────────────────────── -->
+  <!-- ── Help button ────────────────────────────────────────────── -->
   <button id="help-btn" onclick="toggleHelp()" aria-label="Help">?</button>
 
-  <!-- ── Bottom hint bar ────────────────────────────────────── -->
+  <!-- ── Bottom hint bar ────────────────────────────────────────── -->
   <div id="hint-bar">
     Drag to rotate &nbsp;·&nbsp; Pinch to zoom &nbsp;·&nbsp; Tap the gold button for AR
   </div>
 
-  <!-- ══════════════════════════════════════════════════════════
-       MODEL VIEWER
-       ar-modes priority order:
-         1. webxr      — Android Chrome + ARCore (WebXR hit-test)
-         2. scene-viewer — Android Google Scene Viewer (native app)
-         3. quick-look  — iOS Safari AR Quick Look (native ARKit)
-                          Works on iPhone 12+ including iPhone 16 Pro
-
-       The <button slot="ar-button"> is shown by model-viewer
-       only when AR is actually supported on the device.
-       On unsupported devices it is hidden automatically.
-  ══════════════════════════════════════════════════════════ -->
+  <!-- ── Model Viewer ───────────────────────────────────────────── -->
   <model-viewer
     id="viewer"
     src="model/hari-enclave.glb"
@@ -278,19 +601,15 @@
     exposure="1"
     alt="Hari Enclave 3D apartment model"
   >
-
-    <!-- AR launch button — styled gold, centred by model-viewer -->
     <button id="ar-btn" slot="ar-button">
-      <!-- AR cube icon (inline SVG, no external dependency) -->
       <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
         <path d="M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18L20 8.5v7l-8 4-8-4v-7l8-4.32z"/>
       </svg>
       View in AR
     </button>
-
   </model-viewer>
 
-  <!-- ── Help modal ─────────────────────────────────────────── -->
+  <!-- ── Help modal ─────────────────────────────────────────────── -->
   <div id="help-modal" role="dialog" aria-modal="true">
     <div class="card">
       <h2>How to Use the AR Viewer</h2>
@@ -325,24 +644,70 @@
   </div>
 
   <script>
-    var viewer = document.getElementById('viewer');
+    /* ── Letter-by-letter brand name animation ───────────────── */
+    (function () {
+      var text   = 'HARI ENCLAVE';
+      var start  = 1.0;
+      var step   = 0.055;
+      var wrap   = document.getElementById('brand-name');
+      for (var i = 0; i < text.length; i++) {
+        if (text[i] === ' ') {
+          var sp = document.createElement('span');
+          sp.className = 'space';
+          wrap.appendChild(sp);
+        } else {
+          var span = document.createElement('span');
+          span.className = 'letter';
+          span.textContent = text[i];
+          span.style.animationDelay = (start + i * step) + 's';
+          wrap.appendChild(span);
+        }
+      }
+    })();
 
-    /* ── Loading progress ─────────────────────────────────── */
+    /* ── Loading logic ───────────────────────────────────────── */
+    var viewer   = document.getElementById('viewer');
+    var screen   = document.getElementById('loading-screen');
+    var fillEl   = document.getElementById('progress-fill');
+    var pctEl    = document.getElementById('progress-pct');
+    var titleBar = document.getElementById('title-bar');
+    var hintBar  = document.getElementById('hint-bar');
+    var helpBtn  = document.getElementById('help-btn');
+
+    var modelReady = false;
+    var minShown   = false;
+
+    /* Minimum 3-second loading screen */
+    var minTimer = setTimeout(function () {
+      minShown = true;
+      maybeHide();
+    }, 3000);
+
     viewer.addEventListener('progress', function (e) {
       var pct = Math.round(e.detail.totalProgress * 100);
-      document.getElementById('progress-fill').style.width = pct + '%';
-      document.getElementById('progress-pct').textContent  = pct + '%';
+      fillEl.style.width = pct + '%';
+      pctEl.textContent  = pct + '%';
     });
 
-    /* ── Hide loading screen once model is ready ─────────── */
     viewer.addEventListener('load', function () {
-      var screen = document.getElementById('loading-screen');
-      screen.classList.add('hidden');
-      /* Remove from DOM after fade so it can't block touches */
-      setTimeout(function () { screen.style.display = 'none'; }, 700);
+      modelReady = true;
+      fillEl.style.width = '100%';
+      pctEl.textContent  = '100%';
+      setTimeout(maybeHide, 400);
     });
 
-    /* ── Help modal ──────────────────────────────────────── */
+    function maybeHide() {
+      if (!minShown || !modelReady) return;
+      screen.classList.add('hide');
+      setTimeout(function () {
+        screen.style.display = 'none';
+        titleBar.classList.add('visible');
+        hintBar.classList.add('visible');
+        helpBtn.classList.add('visible');
+      }, 700);
+    }
+
+    /* ── Help modal ─────────────────────────────────────────── */
     function toggleHelp() {
       document.getElementById('help-modal').classList.toggle('visible');
     }
