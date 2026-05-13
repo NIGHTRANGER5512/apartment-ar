@@ -1,0 +1,13 @@
+# Hari Enclave — PBR materials for obj2gltf
+# --metallicRoughness flag maps: Kd=diffuse, Ks=metallic, Ns=roughness, bump=normal
+newmtl material_0
+Ka 1.000 1.000 1.000
+Kd 1.000 1.000 1.000
+Ks 1.000 1.000 1.000
+d 1.0
+Ns 0.0
+illum 2
+map_Kd texture_diffuse.png
+map_Ks texture_metallic.png
+map_Ns texture_roughness.png
+map_bump texture_normal.png
