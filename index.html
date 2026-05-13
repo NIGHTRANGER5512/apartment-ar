@@ -414,15 +414,22 @@
       font-weight: 700;
       font-family: var(--font-sans);
       cursor: pointer;
-      margin-bottom: 80px;
+      /* Override model-viewer slot positioning so the button sits
+         above the hint bar and above all overlay divs */
+      position: fixed !important;
+      bottom: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 150;
       display: flex;
       align-items: center;
       gap: 8px;
       transition: opacity 0.2s, transform 0.15s;
       animation: btnPulse 2.5s ease-in-out infinite;
+      white-space: nowrap;
     }
 
-    #ar-btn:active { opacity: 0.85; transform: scale(0.97); }
+    #ar-btn:active { opacity: 0.85; }
 
     #ar-btn svg {
       width: 20px; height: 20px; fill: var(--navy);
